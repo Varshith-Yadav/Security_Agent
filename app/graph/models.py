@@ -1,20 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Set, Optional
+from typing import List, Optional, Set
 
 
 @dataclass
-class Node:
-    id: str
-    type: str  # EC2, IAM_ROLE, S3
-    entry_point: bool = False
-    sensitive: bool = False
-    capabilities: Set[str] = field(default_factory=set)
+class AttackPath:
+    nodes: List[str]
+    edge_types: List[str]
+    acquired_capabilities: Set[str] = field(default_factory=set)
+    risk_score: float = 0.0
+
+
+@dataclass
+class BlockedTraversal:
+    nodes: List[str]
+    attempted_target: str
+    reason: str
+    edge_type: str
     required_capability: Optional[str] = None
-    attached_role: Optional[str] = None
-
-
-@dataclass
-class Edge:
-    source: str
-    target: str
-    type: str  # network, assume_role, permission
