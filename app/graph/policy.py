@@ -1,16 +1,10 @@
-from typing import Dict, Set, Tuple
+from typing import Any, Dict, Iterable, Set, Tuple
 
 
 class PolicyEngine:
     def __init__(self):
-        # Explicit allow: (source_id, target_id)
         self.explicit_allow: Set[Tuple[str, str]] = set()
-
-        # Explicit deny: (source_id, target_id)
         self.explicit_deny: Set[Tuple[str, str]] = set()
-
-        # Role-to-role rules
-        # Example: ("Analyzer", "Memory")
         self.role_permissions: Set[Tuple[str, str]] = set()
 
     def allow(self, source_id: str, target_id: str):
@@ -30,3 +24,32 @@ class PolicyEngine:
 
     def is_role_allowed(self, source_role: str, target_role: str) -> bool:
         return (source_role, target_role) in self.role_permissions
+
+    def load_from_dict(self, policy_data: Dict[str, Any]):
+        if not policy_data:
+            return
+
+        for source_id, target_id in self._pairs(policy_data.get("explicit_allow")):
+            self.allow(source_id, target_id)
+
+        for source_id, target_id in self._pairs(policy_data.get("explicit_deny")):
+            self.deny(source_id, target_id)
+
+        for source_role, target_role in self._pairs(policy_data.get("role_permissions")):
+            self.allow_role(source_role, target_role)
+
+    @staticmethod
+    def _pairs(value: Any) -> Iterable[Tuple[str, str]]:
+        if not value:
+            return []
+
+        if isinstance(value, dict):
+            value = value.items()
+
+        pairs = []
+        for item in value:
+            if not isinstance(item, (list, tuple)) or len(item) != 2:
+                raise ValueError(f"Invalid policy pair: {item}")
+            source, target = str(item[0]), str(item[1])
+            pairs.append((source, target))
+        return pairs
