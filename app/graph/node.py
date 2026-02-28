@@ -1,40 +1,56 @@
-# node.py
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, Optional, Set, Union
 
-from typing import Set, Callable, Any, Dict
-from capability import Capability
-from state import NodeState
+from .capability import Capability
+from .state import NodeState
+
+CapabilityLike = Union[Capability, str]
 
 
+@dataclass
 class Node:
-    def __init__(self, node_id: str, role: str, execute_fn: Callable[[Dict], Any] = None):
-        self.node_id = node_id
-        self.role = role
-        self.capabilities: Set[Capability] = set()
-        self.execute_fn = execute_fn
-        self.state = NodeState.CREATED
+    node_id: str
+    role: str
+    entry_point: bool = False
+    sensitive: bool = False
+    exploitability: float = 1.0
+    required_capability: Optional[Capability] = None
+    attached_role: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    capabilities: Set[Capability] = field(default_factory=set)
+    state: NodeState = NodeState.CREATED
 
-    def add_capability(self, capability: Capability):
-        self.capabilities.add(capability)
+    @property
+    def id(self) -> str:
+        return self.node_id
 
-    def has_capability(self, capability: Capability) -> bool:
-        return capability in self.capabilities
+    @property
+    def type(self) -> str:
+        return self.role
+
+    def add_capability(self, capability: CapabilityLike):
+        self.capabilities.add(Capability.parse(capability))
+
+    def add_capabilities(self, capabilities: Iterable[CapabilityLike]):
+        for capability in capabilities:
+            self.add_capability(capability)
+
+    def has_capability(self, capability: Optional[CapabilityLike]) -> bool:
+        if capability is None:
+            return True
+        return Capability.parse(capability) in self.capabilities
 
     def set_state(self, new_state: NodeState):
         self.state = new_state
 
-    def execute(self, context: Dict):
-        if not self.execute_fn:
-            raise NotImplementedError(f"No execution logic for {self.node_id}")
-
-        self.set_state(NodeState.RUNNING)
-
-        try:
-            output = self.execute_fn(context)
-            self.set_state(NodeState.COMPLETED)
-            return output
-        except Exception as e:
-            self.set_state(NodeState.FAILED)
-            raise e
+    def capability_names(self) -> Set[str]:
+        return {capability.name for capability in self.capabilities}
 
     def __repr__(self):
-        return f"Node(id={self.node_id}, role={self.role}, state={self.state.name})"
+        capabilities = sorted(self.capability_names())
+        return (
+            "Node("
+            f"id={self.node_id}, role={self.role}, entry_point={self.entry_point}, "
+            f"sensitive={self.sensitive}, state={self.state.name}, capabilities={capabilities}"
+            ")"
+        )
