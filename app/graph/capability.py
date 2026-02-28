@@ -24,7 +24,7 @@ class Capability(str, Enum):
         if by_name in cls.__members__:
             return cls[by_name]
 
-        by_value = normalized.lower().replace(" ", "_")
+        by_value = normalized.lower().replace(" ", "_").replace("-", "_")
         for capability in cls:
             if capability.value == by_value:
                 return capability
