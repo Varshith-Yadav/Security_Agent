@@ -1,0 +1,70 @@
+nodes:
+  - id: internet
+    role: External
+    entry_point: true
+    capabilities: [ssh, execute]
+    exploitability: 1.0
+
+  - id: ec2-bastion
+    role: EC2
+    capabilities: [assume_role]
+    exploitability: 1.6
+
+  - id: ec2-app
+    role: EC2
+    capabilities: [assume_role, read]
+    exploitability: 1.8
+
+  - id: iam-app-role
+    role: IAM_ROLE
+    capabilities: [dump_secrets, read, exfiltrate]
+    exploitability: 1.4
+
+  - id: secrets-prod
+    role: SecretsManager
+    sensitive: true
+    exploitability: 2.4
+
+  - id: rds-payments
+    role: RDS
+    sensitive: true
+    exploitability: 2.8
+
+  - id: s3-archive
+    role: S3
+    sensitive: true
+    exploitability: 2.2
+
+edges:
+  - source: internet
+    target: ec2-bastion
+    type: network
+  - source: ec2-bastion
+    target: ec2-app
+    type: lateral_movement
+  - source: ec2-app
+    target: iam-app-role
+    type: assume_role
+  - source: iam-app-role
+    target: secrets-prod
+    type: permission
+  - source: iam-app-role
+    target: rds-payments
+    type: permission
+  - source: iam-app-role
+    target: s3-archive
+    type: permission
+
+policies:
+  role_permissions:
+    - [External, EC2]
+    - [EC2, EC2]
+    - [EC2, IAM_ROLE]
+    - [IAM_ROLE, SecretsManager]
+    - [IAM_ROLE, S3]
+  explicit_deny:
+    - [iam-app-role, rds-payments]
+
+simulation:
+  max_depth: 7
+  stop_at_first_sensitive: true
